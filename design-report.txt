@@ -1,0 +1,184 @@
+# Design Report: Channel-Based Tool for Programming Issues
+
+## 1. Architecture Overview
+
+The application follows a standard MERN stack architecture with MySQL:
+
+- **Frontend**: React with React Router for navigation and Formik for form handling
+- **Backend**: Node.js with Express for RESTful API implementation
+- **Database**: MySQL with Sequelize ORM
+- **Authentication**: JWT-based authentication
+- **Deployment**: Docker containerization
+
+## 2. Database Design
+
+### Entity Relationship Diagram (ERD):
+
+```
+User (1) ----- (*) Channel
+  |               |
+  |               |
+  |               |
+ (*) ----------- (*) Message
+  |               |
+  |               |
+ (*) ----------- (*) Reply
+  |               |
+  |               |
+ (1) ----------- (*) Rating
+```
+
+### Main Tables:
+
+1. **Users**:
+   - id (PK)
+   - username (unique)
+   - email (unique)
+   - password (hashed)
+   - avatar (string path)
+   - level (enum: 'Beginner', 'Intermediate', 'Expert')
+   - isAdmin (boolean)
+
+2. **Channels**:
+   - id (PK)
+   - name (unique)
+   - description
+   - userId (FK to User - creator)
+
+3. **Messages**:
+   - id (PK)
+   - title
+   - content
+   - screenshot (string path)
+   - userId (FK to User - author)
+   - channelId (FK to Channel)
+   - tags (comma-separated string)
+
+4. **Replies**:
+   - id (PK)
+   - content
+   - screenshot (string path)
+   - userId (FK to User - author)
+   - messageId (FK to Message)
+   - parentReplyId (FK to Reply, nullable for top-level replies)
+
+5. **Ratings**:
+   - id (PK)
+   - value (-1 or 1)
+   - userId (FK to User)
+   - targetType (enum: 'message', 'reply')
+   - targetId (ID of the target message or reply)
+
+## 3. Frontend Architecture
+
+### Component Structure:
+
+```
+App
+|--- Layout
+|    |--- Navbar
+|    |--- Footer
+|
+|--- Pages
+|    |--- Landing
+|    |--- Auth (Login, Register)
+|    |--- Channel (List, View)
+|    |--- Message (View)
+|    |--- User (Profile)
+|    |--- Search
+|
+|--- Components
+     |--- Message (MessageItem, MessageForm)
+     |--- Reply (ReplyItem, ReplyForm, NestedReplies)
+     |--- Rating (RatingButtons)
+     |--- Form (FormInput, FormTextarea, FileUpload)
+```
+
+### State Management:
+
+- React Context API for authentication state
+- React hooks (useState, useEffect) for component-level state
+- Axios for API calls
+
+## 4. Backend Architecture
+
+### API Endpoints:
+
+1. **Authentication**:
+   - POST /api/auth/register - Register a new user
+   - POST /api/auth/login - User login
+
+2. **Channels**:
+   - GET /api/channels - Get all channels
+   - GET /api/channels/:id - Get a specific channel
+   - POST /api/channels - Create a new channel
+   - PUT /api/channels/:id - Update a channel
+   - DELETE /api/channels/:id - Delete a channel
+
+3. **Messages**:
+   - GET /api/messages/channel/:channelId - Get messages for a channel
+   - GET /api/messages/:id - Get a specific message with replies
+   - POST /api/messages - Create a new message
+   - PUT /api/messages/:id - Update a message
+   - DELETE /api/messages/:id - Delete a message
+   - POST /api/messages/:id/rate - Rate a message
+
+4. **Replies**:
+   - GET /api/replies/message/:messageId - Get top-level replies for a message
+   - GET /api/replies/parent/:replyId - Get child replies for a parent reply
+   - POST /api/replies - Create a new reply
+   - PUT /api/replies/:id - Update a reply
+   - DELETE /api/replies/:id - Delete a reply
+   - POST /api/replies/:id/rate - Rate a reply
+
+5. **Users**:
+   - GET /api/users - Get all users (admin only)
+   - GET /api/users/profile - Get current user's profile
+   - PUT /api/users/profile - Update user profile
+   - DELETE /api/users/:id - Delete a user (admin only)
+
+6. **Search**:
+   - GET /api/search/keyword - Search by keyword
+   - GET /api/search/user - Search by username
+   - GET /api/search/users/most-posts - Get users with most posts
+   - GET /api/search/users/highest-ratings - Get users with highest ratings
+
+### Middleware:
+
+1. **Authentication middleware**: Verify JWT tokens for protected routes
+2. **Admin middleware**: Check if user has admin privileges
+3. **Upload middleware**: Handle file uploads using Multer
+
+## 5. Security Considerations
+
+1. **Authentication**:
+   - JWT tokens with expiration
+   - Password hashing using bcrypt
+   - Protected routes requiring authentication
+
+2. **Authorization**:
+   - Admin-only routes and actions
+   - User-specific permissions (can only edit/delete own content)
+
+3. **Data Validation**:
+   - Server-side validation using Sequelize
+   - Client-side validation using Formik and Yup
+
+4. **File Upload Security**:
+   - File type restriction (images only)
+   - File size limitation
+   - Secure file naming
+
+## 6. Scalability Considerations
+
+1. **Database Optimization**:
+   - Proper indexing on frequently queried fields
+   - Efficient query design
+
+2. **Frontend Performance**:
+   - Lazy loading for routes
+   - Pagination for lists
+
+3. **Docker Deployment**:
+   - Containerized application for easy scaling
+   - Separate containers for frontend, backend, and database 
